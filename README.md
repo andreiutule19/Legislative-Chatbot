@@ -4,6 +4,8 @@ Web chat UI backed by **FastAPI**, **Redis**, **Google Gemini**, and optional **
 
 The app has **no accounts or login**. All stored conversations use a single internal user id.
 
+### Keep in mind that I used a free and limited gemini usage
+
 ---
 
 ## What you get
@@ -58,7 +60,7 @@ Browser ──HTTP/SSE──► FastAPI (/api/*)
 
 1. User sends a message → `POST /api/chat/send`.
 2. Backend stores the user turn, may refresh a **conversation summary**, calls **RAG** with the latest query, builds a **context payload** (system + summary + RAG + recent turns), streams Gemini output as SSE.
-3. Full reply is persisted; new threads can get an auto-generated **title**.
+3. Full reply is persisted and new threads can get an auto-generated **title**.
 
 ---
 
@@ -113,9 +115,6 @@ If you skip RAG, leave `GCP_SA_KEY_PATH` unset; Compose defaults the volume to `
 ```bash
 docker compose up --build
 ```
-
-Open **http://localhost:8000**. Change the host port: `PORT=3000 docker compose up --build`.
-
 ---
 
 ## Environment variables
@@ -151,7 +150,7 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-Keep `STATIC_DIR` empty so FastAPI does not serve a production build.
+`STATIC_DIR` should be kept empty so FastAPI does not serve a production build.
 
 **Frontend**
 
@@ -163,7 +162,7 @@ cp .env.example .env
 npm start
 ```
 
-Dev UI: **http://localhost:3000** → API **http://localhost:8000**.
+Dev UI: **http://localhost:8000**.
 
 ---
 
@@ -179,9 +178,6 @@ Dev UI: **http://localhost:3000** → API **http://localhost:8000**.
 | DELETE | `/api/chat/conversations/{id}` | Delete thread + Redis keys |
 | GET | `/api/chat/conversations/{id}/messages` | Message list |
 | POST | `/api/chat/send` | Body: `{"message":"...","conversation_id":null\|uuid}`. Response: **SSE** stream, then final event with `conversation_id`. |
-
-SSE lines look like `data: {...}`; payloads include streaming `content`, optional `error`, terminal `done`, and finally `conversation_id`.
-
 ---
 
 ## Technical documentation (PDF)

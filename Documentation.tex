@@ -7,11 +7,17 @@
 \usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage{longtable}
+\usepackage{array}
+\usepackage{ragged2e}
 \usepackage{enumitem}
+
+% Wide, ragged columns for env-var tables (single-letter names for \newcolumntype).
+\newcolumntype{E}{>{\RaggedRight\arraybackslash}p{6.6cm}}
+\newcolumntype{F}{>{\RaggedRight\arraybackslash}p{8.2cm}}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{tikz}
-\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}
 
 \hypersetup{
   colorlinks=true,
@@ -139,25 +145,28 @@ react-icons & 5.x & Icon set for sidebar and controls \\
 
 Figure~\ref{fig:arch} shows the main components and data flows.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
-  node distance=1.1cm and 1.4cm,
-  box/.style={rectangle, draw, rounded corners, minimum width=3.2cm, minimum height=0.9cm, align=center, font=\small},
-  cloud/.style={rectangle, draw, dashed, rounded corners, minimum width=3cm, minimum height=1.2cm, align=center, font=\small},
+  box/.style={rectangle, draw, rounded corners, minimum height=0.95cm, align=center, font=\small, inner sep=4pt},
+  cloud/.style={rectangle, draw, dashed, rounded corners, minimum height=1.15cm, align=center, font=\small, inner sep=4pt},
   arrow/.style={-{Stealth[length=2mm]}, thick}
 ]
+% Explicit coordinates avoid overlap between Redis (under API) and the cloud nodes.
+\node[box, text width=3.0cm] (ui) at (0,0) {React UI\\Sidebar + ChatArea};
+\node[box, text width=3.1cm] (api) at (4.7,0) {FastAPI\\Chat routes + health};
+\draw[arrow] (ui.east) -- node[above, font=\scriptsize] {HTTP / SSE} (api.west);
 
-\node[box] (ui) {React UI\\Sidebar + ChatArea};
-\node[box, right=3.8cm of ui] (api) {FastAPI\\Chat routes + health};
-\node[box, below=of api] (redis) {Redis\\conversations,\\messages, summaries};
-\node[cloud, below=of ui, xshift=1.9cm] (gemini) {Google Gemini\\API key};
-\node[cloud, right=of gemini] (vertex) {Vertex AI\\RAG retrieveContexts\\(service account)};
+\node[box, text width=2.9cm] (redis) at (4.7,-2.7) {Redis\\conversations, messages, summaries};
+\node[cloud, text width=3.0cm] (gemini) at (0,-2.7) {Google Gemini\\API key};
+\node[cloud, text width=3.35cm] (vertex) at (9.35,-2.7) {Vertex AI\\RAG \texttt{retrieveContexts}\\(service account)};
 
-\draw[arrow] (ui) -- node[above, font=\scriptsize] {HTTP / SSE} (api);
-\draw[arrow] (api) -- (redis);
-\draw[arrow] (api.south west) |- +(-0.3,-0.6) -| (gemini.north);
-\draw[arrow] (api.south east) |- +(0.3,-0.6) -| (vertex.north);
+% Junction below API: vertical stem, then Redis + branches to Gemini and Vertex.
+\coordinate (hub) at ($(api.south)+(0,-0.55)$);
+\draw[arrow] (api.south) -- (hub);
+\draw[arrow] (hub) -- (redis.north);
+\draw[arrow] (hub) -| (gemini.north);
+\draw[arrow] (hub) -| (vertex.north);
 
 \end{tikzpicture}
 \caption{Logical architecture: browser, API, Redis, and external AI services.}
@@ -333,22 +342,22 @@ Service \texttt{chatbot}, build context project root, container name \texttt{rag
 
 \subsection{Environment variables (reference)}
 
-\begin{longtable}{@{}p{4.2cm}p{9cm}@{}}
+\begin{longtable}{@{}E F@{}}
 \toprule
 \textbf{Variable} & \textbf{Description} \\
 \midrule
 \endhead
-\texttt{REDIS\_URL} & Redis URL (container: \texttt{redis://localhost:6379/0}). \\
-\texttt{GCP\_PROJECT\_ID} & Google Cloud project id. \\
-\texttt{GCP\_LOCATION} & Vertex region (e.g.\ \texttt{europe-west3}). \\
-\texttt{RAG\_CORPUS\_NAME} & Full resource name of the RAG corpus. \\
-\texttt{GEMINI\_MODEL\_NAME} & Gemini model id. \\
-\texttt{GOOGLE\_API\_KEY} & API key for Gemini (Generative Language API). \\
-\texttt{GOOGLE\_APPLICATION\_CREDENTIALS} & Filesystem path to service account JSON inside the container. \\
-\texttt{CORS\_ORIGINS} & Allowed origins (comma-separated) or \texttt{*}. \\
-\texttt{STATIC\_DIR} & Path to built SPA (\texttt{/app/static} in Docker). \\
-\texttt{PORT} & Host port for Compose (optional, default 8000). \\
-\texttt{GCP\_SA\_KEY\_PATH} & Host path to key file mounted at \texttt{/app/credentials/sa-key.json}. \\
+\ttfamily\footnotesize REDIS\_URL\normalfont\normalsize & Redis URL (container: \texttt{redis://localhost:6379/0}). \\
+\ttfamily\footnotesize GCP\_PROJECT\_ID\normalfont\normalsize & Google Cloud project id. \\
+\ttfamily\footnotesize GCP\_LOCATION\normalfont\normalsize & Vertex region (e.g.\ \texttt{europe-west3}). \\
+\ttfamily\footnotesize RAG\_CORPUS\_NAME\normalfont\normalsize & Full resource name of the RAG corpus. \\
+\ttfamily\footnotesize GEMINI\_MODEL\_NAME\normalfont\normalsize & Gemini model id. \\
+\ttfamily\footnotesize GOOGLE\_API\_KEY\normalfont\normalsize & API key for Gemini (Generative Language API). \\
+\ttfamily\footnotesize GOOGLE\_APPLICATION\_\allowbreak CREDENTIALS\normalfont\normalsize & Filesystem path to service account JSON inside the container (e.g.\ \texttt{/app/credentials/sa-key.json}). \\
+\ttfamily\footnotesize CORS\_ORIGINS\normalfont\normalsize & Allowed origins (comma-separated) or \texttt{*}. \\
+\ttfamily\footnotesize STATIC\_DIR\normalfont\normalsize & Path to built SPA (\texttt{/app/static} in Docker). \\
+\ttfamily\footnotesize PORT\normalfont\normalsize & Host port for Compose (optional, default 8000). \\
+\ttfamily\footnotesize GCP\_SA\_KEY\_PATH\normalfont\normalsize & Host path to key file mounted read-only at \texttt{/app/credentials/sa-key.json}. \\
 \bottomrule
 \end{longtable}
 

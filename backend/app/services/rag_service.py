@@ -212,7 +212,7 @@ async def summarize_messages(
                 contents=prompt,
                 config={"temperature": 0.2, "max_output_tokens": 512},
             )
-            return resp.text.strip()
+            return (resp.text or "").strip()
 
         return await loop.run_in_executor(None, _sync_summarize)
     except Exception as e:
@@ -269,7 +269,9 @@ def build_context_messages(
 
 async def generate_streaming_response(
     context_messages: list[dict],
+    result_holder: list[str],
 ) -> AsyncGenerator[str, None]:
+    """Stream SSE chunks to the client and append the full text to *result_holder*."""
     try:
         _init_ai()
 
@@ -278,10 +280,10 @@ async def generate_streaming_response(
             yield "data: [DONE]\n\n"
             return
 
-        contents = []
-        for msg in context_messages:
-            role = msg["role"]
-            contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+        contents = [
+            {"role": m["role"], "parts": [{"text": m["content"]}]}
+            for m in context_messages
+        ]
 
         loop = asyncio.get_event_loop()
 
@@ -303,11 +305,11 @@ async def generate_streaming_response(
             text = chunk.text or ""
             if text:
                 full_response += text
-                data = json.dumps({"content": text, "done": False})
-                yield f"data: {data}\n\n"
+                yield f"data: {json.dumps({'content': text, 'done': False})}\n\n"
                 await asyncio.sleep(0)
 
-        yield f"data: {json.dumps({'content': '', 'done': True, 'full_response': full_response})}\n\n"
+        result_holder.append(full_response)
+        yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
         yield "data: [DONE]\n\n"
 
     except Exception as e:
@@ -337,7 +339,7 @@ async def generate_title_for_conversation(first_message: str) -> str:
                 ),
                 config={"temperature": 0.3, "max_output_tokens": 30},
             )
-            return resp.text.strip()
+            return (resp.text or "").strip()
 
         title = await loop.run_in_executor(None, _sync_title)
         return title or first_message[:50]

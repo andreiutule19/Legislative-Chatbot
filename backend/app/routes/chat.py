@@ -11,7 +11,6 @@ so long conversations don't blow up the token budget.
 """
 
 import json
-import logging
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -35,7 +34,6 @@ from app.services.rag_service import (
     summarize_messages,
 )
 
-log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 DEFAULT_USER = "default"
@@ -145,19 +143,11 @@ async def send_message(data: ChatRequest):
     )
 
     async def event_stream():
-        full_response = ""
-        async for chunk in generate_streaming_response(context_messages):
+        result_holder: list[str] = []
+        async for chunk in generate_streaming_response(context_messages, result_holder):
             yield chunk
 
-            try:
-                if chunk.startswith("data: ") and "[DONE]" not in chunk:
-                    payload = json.loads(chunk[6:].strip())
-                    if "content" in payload and payload.get("done") is False:
-                        full_response += payload["content"]
-                    elif payload.get("done") is True and payload.get("full_response"):
-                        full_response = payload["full_response"]
-            except (json.JSONDecodeError, KeyError):
-                pass
+        full_response = result_holder[0] if result_holder else ""
 
         if full_response:
             rr = get_redis()

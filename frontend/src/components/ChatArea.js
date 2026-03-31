@@ -85,7 +85,6 @@ export default function ChatArea({
   isStreaming,
   onSend,
   onStopStreaming,
-  activeConversation,
 }) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef(null);

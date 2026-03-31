@@ -149,7 +149,6 @@ export default function App() {
         isStreaming={isStreaming}
         onSend={handleSendMessage}
         onStopStreaming={handleStopStreaming}
-        activeConversation={conversations.find((c) => c.id === activeId)}
       />
     </div>
   );

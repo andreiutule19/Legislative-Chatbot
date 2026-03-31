@@ -232,13 +232,6 @@ class MessagesTable:
         raw = await r.lrange(self._msgs_key(conversation_id), 0, end_idx)
         return [json.loads(m) for m in raw]
 
-    async def clear_messages(self, r: aioredis.Redis, conversation_id: str) -> bool:
-        pipe = r.pipeline()
-        pipe.delete(self._msgs_key(conversation_id))
-        pipe.delete(self._counter_key(conversation_id))
-        await pipe.execute()
-        return True
-
 
 Conversations = ConversationsTable()
 Messages = MessagesTable()

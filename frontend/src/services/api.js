@@ -23,13 +23,6 @@ export async function getConversations() {
   return request("/api/chat/conversations");
 }
 
-export async function createConversation(data = {}) {
-  return request("/api/chat/conversations", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
 export async function updateConversation(id, data) {
   return request(`/api/chat/conversations/${id}`, {
     method: "PUT",

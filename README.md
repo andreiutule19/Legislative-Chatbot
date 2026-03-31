@@ -72,7 +72,7 @@ Browser ──HTTP/SSE──► FastAPI (/api/*)
 ├── docker-compose.yml      # Single service, env + optional SA key mount
 ├── Documentation.tex       # LaTeX source for technical PDF
 ├── Documentation.pdf       # Generated documentation (rebuild from .tex)
-├── docs/media/             # README screenshot + demo screen recording
+├── docs/media/             # UI screenshot + demo screen recording
 ├── backend/
 │   ├── requirements.txt
 │   └── app/
@@ -115,6 +115,28 @@ If you skip RAG, leave `GCP_SA_KEY_PATH` unset; Compose defaults the volume to `
 ```bash
 docker compose up --build
 ```
+
+---
+
+## Vertex AI RAG corpus (reference)
+
+The app was wired against a corpus in Google Cloud with the following settings (recorded from the Vertex AI RAG corpus details panel):
+
+| Field | Value |
+|--------|--------|
+| **Embedding model** | `text-multilingual-embedding-002` |
+| **Vector database** | RagManaged Cloud Spanner |
+| **Created** | Mar 24, 2026, 2:44:56 AM |
+| **Resource name** | `projects/rag-app-490507/locations/europe-west3/ragCorpora/8646911284551352320` |
+
+Use these in `.env` / Compose (adjust if you use your own project or corpus):
+
+```env
+GCP_PROJECT_ID=rag-app-490507
+GCP_LOCATION=europe-west3
+RAG_CORPUS_NAME=projects/rag-app-490507/locations/europe-west3/ragCorpora/8646911284551352320
+```
+
 ---
 
 ## Environment variables
@@ -162,7 +184,7 @@ cp .env.example .env
 npm start
 ```
 
-Dev UI: **http://localhost:8000**.
+Dev UI: **http://localhost:3000** (API on **http://localhost:8000**).
 
 ---
 

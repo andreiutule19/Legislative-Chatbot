@@ -16,6 +16,22 @@ The app has **no accounts or login**. All stored conversations use a single inte
 
 ---
 
+## UI preview
+
+Dark-themed chat layout: sidebar (new chat, search, conversation list), main thread with user/assistant bubbles, and grounded answers when RAG returns corpus chunks (e.g. document titles and source links).
+
+![RAG Chatbot interface: sidebar, chat thread, and knowledge-base-backed replies](docs/media/chatbot-ui.png)
+
+Short screen recording of the app in use:
+
+<video src="docs/media/demo-screen-recording.mov" controls width="100%" playsinline>
+  Your browser does not support embedded video. <a href="docs/media/demo-screen-recording.mov">Open or download the demo</a> (<code>.mov</code>).
+</video>
+
+If the video does not play in your viewer (some hosts only reliably inline MP4), open [`docs/media/demo-screen-recording.mov`](docs/media/demo-screen-recording.mov) directly or download it from the repository.
+
+---
+
 ## Stack
 
 | Layer | Technology |
@@ -54,6 +70,7 @@ Browser ──HTTP/SSE──► FastAPI (/api/*)
 ├── docker-compose.yml      # Single service, env + optional SA key mount
 ├── Documentation.tex       # LaTeX source for technical PDF
 ├── Documentation.pdf       # Generated documentation (rebuild from .tex)
+├── docs/media/             # README screenshot + demo screen recording
 ├── backend/
 │   ├── requirements.txt
 │   └── app/
@@ -181,10 +198,5 @@ docker run --rm -v "$PWD:/work" -w /work danteev/texlive:latest \
 ## Security notes
 
 - Never commit `.env`, API keys, or `sa-key.json`. They are listed in `.gitignore`.
-- Using `CORS_ORIGINS=*` is convenient for demos; tighten for production.
+- I used `CORS_ORIGINS=*` just for demo
 
----
-
-## License
-
-Use and modify for your own purposes.

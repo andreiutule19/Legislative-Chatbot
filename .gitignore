@@ -11,3 +11,9 @@ dist/
 .DS_Store
 sa-key.json
 *-credentials.json
+
+# LaTeX build artifacts (keep Documentation.tex and Documentation.pdf)
+Documentation.aux
+Documentation.log
+Documentation.out
+Documentation.toc

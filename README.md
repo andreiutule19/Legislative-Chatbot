@@ -1,161 +1,190 @@
 # RAG Chatbot
 
-A full-stack chatbot application with a ChatGPT-style interface, powered by **FastAPI** (backend), **React** (frontend), and **Google Cloud Vertex AI RAG Engine**.
+Web chat UI backed by **FastAPI**, **Redis**, **Google Gemini**, and optional **Vertex AI RAG Engine** retrieval. One Docker image runs the compiled React app, the API, and an embedded Redis instance.
 
-## Architecture
+The app has **no accounts or login**. All stored conversations use a single internal user id.
+
+---
+
+## What you get
+
+- Sidebar: conversations, search, rename, delete, new chat
+- Chat area: markdown, GitHub-flavored extras, syntax-highlighted code blocks
+- **Streaming** assistant replies over **Server-Sent Events (SSE)**
+- **Long-context behavior**: rolling summary in Redis + last 10 messages + RAG snippets for the current question
+- **Same-origin** deployment in Docker (UI and API on port 8000)
+
+---
+
+## Stack
+
+| Layer | Technology |
+|--------|------------|
+| UI | React 18, Create React App, react-markdown, Prism highlighting |
+| API | FastAPI, Uvicorn, Pydantic / pydantic-settings |
+| Data | Redis (async client, in-memory in container) |
+| LLM | `google-genai` + `GOOGLE_API_KEY` |
+| RAG | Vertex `retrieveContexts` REST API + service account OAuth2 (`httpx`, `google-auth`) |
+| Container | Multi-stage: Node 22 Alpine → Python 3.13 Alpine, `redis-server` + `uvicorn` |
+
+---
+
+## How it fits together
 
 ```
-┌──────────────────────────────────────────────────┐
-│                   React Frontend                  │
-│  ┌────────────┐  ┌────────────────────────────┐  │
-│  │  Sidebar    │  │  Chat Area                 │  │
-│  │  - convs    │  │  - messages + markdown     │  │
-│  │  - search   │  │  - SSE streaming           │  │
-│  │  - user     │  │  - code highlighting       │  │
-│  └────────────┘  └────────────────────────────┘  │
-└───────────────────────┬──────────────────────────┘
-                        │ HTTP + SSE
-┌───────────────────────▼──────────────────────────┐
-│                  FastAPI Backend                   │
-│  ┌──────────┐  ┌──────────┐  ┌────────────────┐  │
-│  │ Auth API  │  │ Chat API │  │ RAG Service    │  │
-│  │ (JWT)     │  │ (SSE)    │  │ (Vertex AI)    │  │
-│  └─────┬────┘  └────┬─────┘  └───────┬────────┘  │
-│        │             │                │            │
-│  ┌─────▼─────────────▼────┐   ┌──────▼─────────┐ │
-│  │  Redis (in-memory)      │   │  GCP Vertex AI │ │
-│  │  - auth, users          │   │  RAG Engine    │ │
-│  │  - conversations, msgs  │   │  + Gemini      │ │
-│  └─────────────────────────┘   └────────────────┘ │
-└───────────────────────────────────────────────────┘
+Browser ──HTTP/SSE──► FastAPI (/api/*)
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+       Redis          Gemini API      Vertex RAG
+    (state)           (API key)    (service account)
 ```
 
-### Key Design Decisions
+1. User sends a message → `POST /api/chat/send`.
+2. Backend stores the user turn, may refresh a **conversation summary**, calls **RAG** with the latest query, builds a **context payload** (system + summary + RAG + recent turns), streams Gemini output as SSE.
+3. Full reply is persisted; new threads can get an auto-generated **title**.
 
-- **Redis in-memory storage**: no disk database — all auth, user, conversation, and message data lives in Redis hashes, sorted sets, and lists. Fast, simple, and runs inside the same Docker container.
-- **`yield` / async generators** for streaming: the backend uses Python `async def ... yield` generators so that token-by-token responses flow to the client via SSE without blocking the event loop — other requests continue being served.
-- **Table-class pattern** (inspired by [open-webui](https://github.com/open-webui/open-webui)): each entity (`AuthsTable`, `ConversationsTable`, `MessagesTable`) encapsulates its own Redis operations so routes stay clean.
-- **Separate Auth / User key spaces**: credentials (`auth:{id}`) are stored independently from user profiles (`user:{id}`), matching the open-webui architecture.
+---
 
-## Quick Start (Docker)
+## Repository layout
 
-The easiest way to run the full app — one container, one command:
+```
+.
+├── Dockerfile              # Frontend build + Python runtime + start script
+├── docker-compose.yml      # Single service, env + optional SA key mount
+├── Documentation.tex       # LaTeX source for technical PDF
+├── Documentation.pdf       # Generated documentation (rebuild from .tex)
+├── backend/
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py         # App factory, CORS, static SPA, /api/health
+│       ├── core/           # config, Redis pool
+│       ├── models/chat.py  # Pydantic + Redis “table” helpers
+│       ├── routes/chat.py  # REST + SSE send
+│       └── services/rag_service.py
+└── frontend/
+    └── src/                # App.js, Sidebar, ChatArea, services/api.js
+```
+
+---
+
+## Run with Docker (recommended)
+
+**1.** Create a root `.env` (Compose reads it automatically). You can start from the backend template:
 
 ```bash
-# 1. Create a .env from the template
 cp backend/.env.example .env
+```
 
-# 2. Edit .env with your GCP credentials + a real SECRET_KEY
+**2.** Set at least:
 
-# 3. Build and run
+- `GOOGLE_API_KEY` — Gemini (enable **Generative Language API** on the API key’s project if needed)
+- `GCP_PROJECT_ID`, `GCP_LOCATION`, `RAG_CORPUS_NAME` — your Vertex RAG corpus resource name
+- `GEMINI_MODEL_NAME` — e.g. `gemini-2.5-flash`
+
+**3.** For RAG retrieval, the Vertex endpoint expects a **bearer token** from a service account (not the API key). Put a JSON key on the host and wire it in `.env`:
+
+```env
+GCP_SA_KEY_PATH=./sa-key.json
+GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/sa-key.json
+```
+
+If you skip RAG, leave `GCP_SA_KEY_PATH` unset; Compose defaults the volume to `/dev/null` and the app still answers without corpus context.
+
+**4.** Build and start:
+
+```bash
 docker compose up --build
 ```
 
-The app will be available at **http://localhost:8000**.
+Open **http://localhost:8000**. Change the host port: `PORT=3000 docker compose up --build`.
 
-To use a different port: `PORT=3000 docker compose up --build`
+---
 
-### Mounting GCP credentials in Docker
+## Environment variables
 
-If running with Vertex AI RAG, mount your Application Default Credentials:
+| Variable | Purpose |
+|----------|---------|
+| `REDIS_URL` | Redis URL (container default: `redis://localhost:6379/0`) |
+| `GCP_PROJECT_ID` | GCP project for Vertex |
+| `GCP_LOCATION` | Region (e.g. `europe-west3`) |
+| `RAG_CORPUS_NAME` | Full corpus resource name |
+| `GEMINI_MODEL_NAME` | Gemini model id |
+| `GOOGLE_API_KEY` | Gemini API key |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path **inside the container** to the SA JSON (e.g. `/app/credentials/sa-key.json`) |
+| `CORS_ORIGINS` | Comma-separated origins or `*` |
+| `STATIC_DIR` | Built frontend root (`/app/static` in Docker; empty for API-only local dev) |
+| `PORT` | Published host port (Compose; default `8000`) |
+| `GCP_SA_KEY_PATH` | Host path to SA JSON mounted read-only at `/app/credentials/sa-key.json` |
 
-```bash
-docker compose run \
-  -v "$HOME/.config/gcloud:/root/.config/gcloud:ro" \
-  -e GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json \
-  chatbot
-```
+---
 
-Or add the volume to `docker-compose.yml` directly.
+## Local development (no Docker)
 
-## Local Development (without Docker)
+**Redis** must be running locally.
 
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- Redis running locally (`brew install redis && redis-server`, or `apt install redis-server`)
-- A Google Cloud project with Vertex AI API enabled (for RAG)
-- `gcloud` CLI authenticated (`gcloud auth application-default login`)
-
-### Backend
+**Backend**
 
 ```bash
 cd backend
-
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-
+python -m venv venv && source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
 cp .env.example .env
-# Edit .env — set REDIS_URL, GCP project ID, RAG corpus name, SECRET_KEY
-
+# Edit .env: REDIS_URL, GOOGLE_API_KEY, GCP_*, RAG_*, GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/key.json
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend
+Keep `STATIC_DIR` empty so FastAPI does not serve a production build.
+
+**Frontend**
 
 ```bash
 cd frontend
-
 npm install
-
 cp .env.example .env
-# Keep REACT_APP_API_URL=http://localhost:8000 for local dev
-
+# REACT_APP_API_URL=http://localhost:8000
 npm start
 ```
 
-The frontend dev server runs at **http://localhost:3000** and proxies API calls to `:8000`.
+Dev UI: **http://localhost:3000** → API **http://localhost:8000**.
 
-## Setting Up Vertex AI RAG
+---
 
-1. Create a RAG corpus in your GCP project:
+## HTTP API (summary)
 
-```python
-from vertexai import rag
-import vertexai
-
-vertexai.init(project="YOUR_PROJECT", location="us-central1")
-
-corpus = rag.create_corpus(
-    display_name="my-knowledge-base",
-    backend_config=rag.RagVectorDbConfig(
-        rag_embedding_model_config=rag.RagEmbeddingModelConfig(
-            vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
-                publisher_model="publishers/google/models/text-embedding-005"
-            )
-        )
-    ),
-)
-print(corpus.name)  # Use this as RAG_CORPUS_NAME in .env
-```
-
-2. Import files into the corpus:
-
-```python
-rag.import_files(
-    corpus.name,
-    ["gs://your-bucket/docs/", "https://drive.google.com/file/d/..."],
-    transformation_config=rag.TransformationConfig(
-        chunking_config=rag.ChunkingConfig(chunk_size=512, chunk_overlap=100)
-    ),
-)
-```
-
-3. Set `RAG_CORPUS_NAME` in `backend/.env` to the corpus name from step 1.
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/auth/signup` | Create account |
-| POST | `/api/auth/signin` | Sign in |
-| GET | `/api/auth/me` | Get current user |
+| Method | Path | Notes |
+|--------|------|--------|
+| GET | `/api/health` | `{"status":"ok"}` |
 | GET | `/api/chat/conversations` | List conversations |
 | POST | `/api/chat/conversations` | Create conversation |
-| PUT | `/api/chat/conversations/:id` | Update conversation |
-| DELETE | `/api/chat/conversations/:id` | Delete conversation |
-| GET | `/api/chat/conversations/:id/messages` | Get messages |
-| POST | `/api/chat/send` | Send message (SSE stream) |
+| GET | `/api/chat/conversations/{id}` | Metadata |
+| PUT | `/api/chat/conversations/{id}` | Update fields |
+| DELETE | `/api/chat/conversations/{id}` | Delete thread + Redis keys |
+| GET | `/api/chat/conversations/{id}/messages` | Message list |
+| POST | `/api/chat/send` | Body: `{"message":"...","conversation_id":null\|uuid}`. Response: **SSE** stream, then final event with `conversation_id`. |
+
+SSE lines look like `data: {...}`; payloads include streaming `content`, optional `error`, terminal `done`, and finally `conversation_id`.
+
+---
+
+## Technical documentation (PDF)
+
+Long-form design and implementation: **`Documentation.pdf`** (source: **`Documentation.tex`**). Rebuild with LaTeX locally or:
+
+```bash
+docker run --rm -v "$PWD:/work" -w /work danteev/texlive:latest \
+  sh -c "pdflatex -interaction=nonstopmode Documentation.tex && pdflatex -interaction=nonstopmode Documentation.tex"
+```
+
+---
+
+## Security notes
+
+- Never commit `.env`, API keys, or `sa-key.json`. They are listed in `.gitignore`.
+- Using `CORS_ORIGINS=*` is convenient for demos; tighten for production.
+
+---
+
+## License
+
+Use and modify for your own purposes.

@@ -1,0 +1,221 @@
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: width 0.2s ease, min-width 0.2s ease;
+  border-right: 1px solid var(--sidebar-border);
+}
+
+.sidebar.collapsed {
+  width: 64px;
+  min-width: 64px;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .sidebar-top {
+  flex-direction: column;
+}
+
+.sidebar.collapsed .new-chat-btn,
+.sidebar.collapsed .collapse-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 0.55rem;
+}
+
+.sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0.5rem;
+}
+
+/* ── Top ── */
+.sidebar-top {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.new-chat-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem;
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.new-chat-btn:hover {
+  background: var(--sidebar-hover);
+}
+
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem;
+  background: transparent;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.collapse-btn:hover {
+  background: var(--sidebar-hover);
+}
+
+/* ── Search ── */
+.sidebar-search {
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-search input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  background: var(--sidebar-hover);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.sidebar-search input:focus {
+  border-color: var(--sidebar-border);
+}
+
+.sidebar-search input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Conversation list ── */
+.conversation-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+}
+
+.conv-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.12s;
+  position: relative;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: inherit;
+  font-family: inherit;
+  text-align: left;
+  outline: none;
+}
+
+.conv-item:hover {
+  background: var(--sidebar-hover);
+}
+
+.conv-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.conv-item.active {
+  background: var(--sidebar-hover);
+}
+
+.conv-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.conv-title {
+  flex: 1;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conv-actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.conv-item.active .conv-actions {
+  opacity: 1;
+}
+
+.conv-edit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.conv-edit input {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  outline: none;
+}
+
+.conv-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  padding: 2rem 1rem;
+}
+
+/* ── Icon button ── */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.icon-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.icon-btn.danger:hover {
+  color: var(--danger);
+}
+

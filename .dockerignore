@@ -1,0 +1,16 @@
+**/.git
+**/.gitignore
+**/.env
+**/__pycache__
+**/*.pyc
+**/.venv
+**/venv
+**/node_modules
+**/build
+**/dist
+**/.DS_Store
+**/*.db
+**/data
+**/.ipynb_checkpoints
+*.md
+!README.md

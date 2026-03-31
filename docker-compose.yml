@@ -1,0 +1,21 @@
+services:
+  chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-chatbot
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - REDIS_URL=redis://localhost:6379/0
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-rag-app-490507}
+      - GCP_LOCATION=${GCP_LOCATION:-europe-west3}
+      - RAG_CORPUS_NAME=${RAG_CORPUS_NAME:-projects/rag-app-490507/locations/europe-west3/ragCorpora/8646911284551352320}
+      - GEMINI_MODEL_NAME=${GEMINI_MODEL_NAME:-gemini-2.5-flash}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - STATIC_DIR=/app/static
+    volumes:
+      - ${GCP_SA_KEY_PATH:-/dev/null}:/app/credentials/sa-key.json:ro
+    restart: unless-stopped

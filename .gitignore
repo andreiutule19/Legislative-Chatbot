@@ -1,0 +1,13 @@
+node_modules/
+build/
+.env
+__pycache__/
+*.pyc
+*.db
+*.rdb
+.venv/
+venv/
+dist/
+.DS_Store
+sa-key.json
+*-credentials.json
